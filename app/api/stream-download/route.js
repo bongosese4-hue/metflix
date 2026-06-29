@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 const CDN_HEADERS = {
     "Referer": "https://videodownloader.site/",
     "Origin": "https://videodownloader.site",

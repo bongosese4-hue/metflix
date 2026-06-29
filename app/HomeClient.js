@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function HomeClient() {
@@ -13,6 +14,7 @@ export default function HomeClient() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [title, setTitle] = useState('Trending Now');
+    const abortControllerRef = useRef(null);
 
     useEffect(() => {
         const qParam = searchParams.get('q');
@@ -35,12 +37,18 @@ export default function HomeClient() {
     }, [searchParams]);
 
     const fetchMultiple = async (queries) => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        const signal = abortControllerRef.current.signal;
+
         setLoading(true);
         setError(null);
         setMovies([]);
         try {
             const promises = queries.map(q => 
-                fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json())
+                fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal }).then(r => r.json())
             );
             const results = await Promise.all(promises);
             let combined = [];
@@ -60,6 +68,7 @@ export default function HomeClient() {
             }
             setMovies(unique);
         } catch (err) {
+            if (err.name === 'AbortError') return;
             setError(err.message);
         }
         setLoading(false);
@@ -79,14 +88,14 @@ export default function HomeClient() {
                 <div className="mosaic-background">
                     <div className="mosaic-grid">
                         {movies.slice(0, 30).map((m, i) => (
-                            <img key={`mosaic-${i}`} src={m.cover?.url || 'https://via.placeholder.com/300x450'} alt="" />
+                            <Image key={`mosaic-${i}`} src={m.cover?.url || 'https://via.placeholder.com/300x450'} alt="" width={300} height={450} />
                         ))}
                     </div>
                     <div className="mosaic-overlay"></div>
                 </div>
             )}
 
-            {/* Hero Section */}
+            {/* Hero Section (Hidden on Mobile) */}
             <section className="hero-section container">
                 <div className="hero-content">
                     <h1 className="hero-title">Unlimited movies,<br />TV shows, and more.</h1>
@@ -106,6 +115,36 @@ export default function HomeClient() {
                     </form>
                 </div>
             </section>
+
+            {/* Mobile Search and Tabs (Hidden on Desktop) */}
+            <div className="container" style={{ display: 'block' }}>
+                <form className="search-bar-mobile" onSubmit={handleSearch}>
+                    <span>🔍</span>
+                    <input
+                        type="text"
+                        placeholder="Search for movies, series..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                    />
+                </form>
+
+                <div className="category-tabs">
+                    <div className="category-tab active" onClick={() => router.push('/?q=trending')}>Trending</div>
+                    <div className="category-tab" onClick={() => router.push('/?q=world+cup')}>World Cup</div>
+                    <div className="category-tab" onClick={() => router.push('/?q=series')}>TV/Series</div>
+                    <div className="category-tab" onClick={() => router.push('/?q=movies')}>Movie</div>
+                    <div className="category-tab" onClick={() => router.push('/?q=anime')}>Anime</div>
+                </div>
+
+                <div className="category-tabs" style={{ marginBottom: '2rem' }}>
+                    <div className="category-tab" style={{fontSize: '0.85rem', background: '#333', padding: '0.3rem 0.8rem', borderRadius: '20px'}}>Hollywood</div>
+                    <div className="category-tab" style={{fontSize: '0.85rem', background: '#333', padding: '0.3rem 0.8rem', borderRadius: '20px'}}>Nollywood</div>
+                    <div className="category-tab" style={{fontSize: '0.85rem', background: '#333', padding: '0.3rem 0.8rem', borderRadius: '20px'}}>Bollywood</div>
+                    <div className="category-tab" style={{fontSize: '0.85rem', background: '#333', padding: '0.3rem 0.8rem', borderRadius: '20px'}}>Western</div>
+                    <div className="category-tab" style={{fontSize: '0.85rem', background: '#333', padding: '0.3rem 0.8rem', borderRadius: '20px'}}>K-Drama</div>
+                    <div className="category-tab" style={{fontSize: '0.85rem', background: '#333', padding: '0.3rem 0.8rem', borderRadius: '20px'}}>Filter ▼</div>
+                </div>
+            </div>
 
             {/* Results Section */}
             <section className="results-section container">
@@ -143,7 +182,7 @@ export default function HomeClient() {
                             return (
                                 <div className="movie-card" key={`${movie.subjectId}-${index}`}>
                                     <Link href={watchUrl} className="poster-container" style={{ display: 'block', position: 'relative' }}>
-                                        <img src={coverUrl} alt={movie.title} className="movie-poster" loading="lazy" />
+                                        <Image src={coverUrl} alt={movie.title} className="movie-poster" width={300} height={450} />
                                         <div className="poster-overlay">
                                             <span className="play-icon">▶</span>
                                         </div>

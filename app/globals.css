@@ -509,3 +509,96 @@ body {
     .watch-poster { width: 130px; }
     .watch-title { font-size: 1.5rem; }
 }
+
+/* ── Moviebox Mobile UI ── */
+.bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #111;
+    border-top: 1px solid #333;
+    z-index: 1000;
+    justify-content: space-around;
+    padding: 0.5rem 0;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+}
+
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    gap: 0.2rem;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.bottom-nav-item.active {
+    color: #4CAF50; /* Green accent from screenshot */
+}
+
+.bottom-nav-icon {
+    font-size: 1.5rem;
+}
+
+.category-tabs {
+    display: flex;
+    overflow-x: auto;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    white-space: nowrap;
+}
+
+.category-tabs::-webkit-scrollbar { display: none; }
+
+.category-tab {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+.category-tab.active {
+    color: #fff;
+}
+.category-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20%;
+    width: 60%;
+    height: 3px;
+    background: #4CAF50;
+    border-radius: 2px;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+    body { padding-bottom: 60px; /* space for bottom nav */ }
+    .bottom-nav { display: flex; }
+    .glass-header { display: none; /* Hide top header on mobile */ }
+    .hero-section { display: none; /* Hide hero on mobile to match screenshot */ }
+    .results-header { display: none; }
+    .search-bar-mobile {
+        display: flex;
+        align-items: center;
+        background: #222;
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+    .search-bar-mobile input {
+        background: transparent;
+        border: none;
+        color: #fff;
+        width: 100%;
+        outline: none;
+        margin-left: 0.5rem;
+    }
+}

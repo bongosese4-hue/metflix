@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function WatchClient() {
     const searchParams = useSearchParams();
@@ -25,46 +26,7 @@ export default function WatchClient() {
 
     const videoRef = useRef(null);
 
-    useEffect(() => {
-        if (!detailPath) {
-            setError('No movie specified.');
-            setLoading(false);
-            return;
-        }
-        loadData();
-    }, [detailPath, subjectId, subjectType]);
-
-    async function loadData() {
-        try {
-            const resDetail = await fetch(`/api/detail?detailPath=${encodeURIComponent(detailPath)}`);
-            const detailData = await resDetail.json();
-            const m = detailData.data?.subject || detailData.data;
-            if (!m) throw new Error('Movie data not found');
-
-            setMovie(m);
-            setStars(detailData.data?.stars || []);
-
-            if (m.genre) {
-                fetch(`/api/related?genre=${encodeURIComponent(m.genre)}&exclude_id=${subjectId}`)
-                    .then(r => r.json())
-                    .then(d => { if (d.data?.items) setRelated(d.data.items); });
-            }
-
-            await fetchDownloads(subjectId, subjectType === 2 ? 1 : 0, subjectType === 2 ? 1 : 0, detailPath);
-            setLoading(false);
-
-            if (action === 'download') {
-                setTimeout(() => {
-                    document.getElementById('downloadSection')?.scrollIntoView({ behavior: 'smooth' });
-                }, 600);
-            }
-        } catch (err) {
-            setError(err.message);
-            setLoading(false);
-        }
-    }
-
-    const fetchDownloads = async (sid, se, ep, dPath) => {
+    const fetchDownloads = useCallback(async (sid, se, ep, dPath) => {
         try {
             const res = await fetch(`/api/download?subjectId=${sid}&se=${se}&ep=${ep}&detailPath=${encodeURIComponent(dPath)}`);
             const data = await res.json();
@@ -76,7 +38,53 @@ export default function WatchClient() {
             console.error('Downloads failed', e);
             return [];
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        let isMounted = true;
+        async function loadData() {
+            if (!detailPath) {
+                if (isMounted) {
+                    setError('No movie specified.');
+                    setLoading(false);
+                }
+                return;
+            }
+            try {
+                const resDetail = await fetch(`/api/detail?detailPath=${encodeURIComponent(detailPath)}`);
+                const detailData = await resDetail.json();
+                const m = detailData.data?.subject || detailData.data;
+                if (!m) throw new Error('Movie data not found');
+
+                if (isMounted) {
+                    setMovie(m);
+                    setStars(detailData.data?.stars || []);
+                }
+
+                if (m.genre) {
+                    fetch(`/api/related?genre=${encodeURIComponent(m.genre)}&exclude_id=${subjectId}`)
+                        .then(r => r.json())
+                        .then(d => { if (d.data?.items && isMounted) setRelated(d.data.items); });
+                }
+
+                await fetchDownloads(subjectId, subjectType === 2 ? 1 : 0, subjectType === 2 ? 1 : 0, detailPath);
+                if (isMounted) setLoading(false);
+
+                if (action === 'download' && isMounted) {
+                    setTimeout(() => {
+                        document.getElementById('downloadSection')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 600);
+                }
+            } catch (err) {
+                if (isMounted) {
+                    setError(err.message);
+                    setLoading(false);
+                }
+            }
+        }
+        loadData();
+        return () => { isMounted = false; };
+    }, [detailPath, subjectId, subjectType, action, fetchDownloads]);
 
     const handleSeasonChange = (se) => {
         setCurrentSeason(se);
@@ -212,7 +220,7 @@ export default function WatchClient() {
                 {/* Movie Info */}
                 <section className="info-section">
                     <div className="info-left">
-                        {coverUrl && <img className="watch-poster" src={coverUrl} alt={movie.title} />}
+                        {coverUrl && <Image className="watch-poster" src={coverUrl} alt={movie.title} width={300} height={450} />}
                     </div>
                     <div className="info-right">
                         {movie.corner && <div className="corner-badge">{movie.corner}</div>}
@@ -287,10 +295,12 @@ export default function WatchClient() {
                         <div className="cast-grid">
                             {stars.slice(0, 10).map((s, i) => (
                                 <div className="cast-card" key={i}>
-                                    <img
+                                    <Image
                                         src={s.avatarUrl || 'https://via.placeholder.com/80?text=?'}
                                         className="cast-avatar"
                                         alt={s.name}
+                                        width={80}
+                                        height={80}
                                         onError={e => { e.target.src = 'https://via.placeholder.com/80?text=?'; }}
                                     />
                                     <div className="cast-name">{s.name}</div>
@@ -335,7 +345,7 @@ export default function WatchClient() {
                                 return (
                                     <div className="movie-card" key={m.subjectId}>
                                         <Link href={wUrl} className="poster-container" style={{ display: 'block', position: 'relative' }}>
-                                            <img src={cover} alt={m.title} className="movie-poster" loading="lazy" />
+                                            <Image src={cover} alt={m.title} className="movie-poster" width={200} height={300} />
                                             <div className="poster-overlay"><span className="play-icon">▶</span></div>
                                         </Link>
                                         <div className="movie-info">

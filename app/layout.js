@@ -1,6 +1,14 @@
 import { Suspense } from 'react';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from './Navbar';
+import BottomNav from './components/BottomNav';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['300', '400', '600', '700', '800'],
+});
 
 export const metadata = {
   title: "MetFlix | Midnight Cinema",
@@ -9,12 +17,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.className}>
       <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body>
         {/* Ambient glow background */}
@@ -35,6 +39,8 @@ export default function RootLayout({ children }) {
         </Suspense>
 
         {children}
+
+        <BottomNav />
       </body>
     </html>
   );
