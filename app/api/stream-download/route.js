@@ -11,10 +11,17 @@ export async function GET(request) {
     if (!url) return new Response('url is required', { status: 400 });
 
     try {
-        const cdnRes = await fetch(url, { headers: CDN_HEADERS });
+        const cdnRes = await fetch(url, { 
+            headers: CDN_HEADERS,
+            redirect: 'follow',
+            cache: 'no-store'
+        });
+        
         const resHeaders = new Headers();
         resHeaders.set('Content-Type', 'application/octet-stream');
         resHeaders.set('Content-Disposition', `attachment; filename="${filename}"`);
+        resHeaders.set('Cache-Control', 'no-store');
+
         if (cdnRes.headers.get('content-length')) resHeaders.set('Content-Length', cdnRes.headers.get('content-length'));
 
         return new Response(cdnRes.body, {
@@ -25,3 +32,4 @@ export async function GET(request) {
         return new Response(`Download error: ${e.message}`, { status: 500 });
     }
 }
+

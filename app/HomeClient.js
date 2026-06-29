@@ -19,33 +19,46 @@ export default function HomeClient() {
         if (qParam === 'movies') {
             setTitle('Trending Movies');
             setQuery('');
-            fetchMovies('avengers');
+            fetchMultiple(['avengers', 'mission impossible', 'john wick', 'fast', 'matrix']);
         } else if (qParam === 'series') {
             setTitle('Trending Series');
             setQuery('');
-            fetchMovies('breaking');
+            fetchMultiple(['breaking', 'game of thrones', 'stranger', 'boys', 'witcher']);
         } else if (qParam && qParam !== 'trending') {
             setTitle(`Search Results for "${qParam}"`);
             setQuery(qParam);
-            fetchMovies(qParam);
+            fetchMultiple([qParam]); // Single search
         } else {
             setTitle('Trending Now');
-            fetchMovies('marvel');
+            fetchMultiple(['marvel', 'dc', 'avatar', 'spider', 'batman', 'star wars']);
         }
     }, [searchParams]);
 
-    const fetchMovies = async (searchQuery) => {
+    const fetchMultiple = async (queries) => {
         setLoading(true);
         setError(null);
         setMovies([]);
         try {
-            const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-            const data = await res.json();
-            if (data.data && data.data.items) {
-                setMovies(data.data.items);
-            } else {
-                setMovies([]);
+            const promises = queries.map(q => 
+                fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json())
+            );
+            const results = await Promise.all(promises);
+            let combined = [];
+            results.forEach(data => {
+                if (data.data && data.data.items) {
+                    combined = combined.concat(data.data.items);
+                }
+            });
+            // Remove duplicates by subjectId
+            const unique = [];
+            const seen = new Set();
+            for (const m of combined) {
+                if (!seen.has(m.subjectId)) {
+                    seen.add(m.subjectId);
+                    unique.push(m);
+                }
             }
+            setMovies(unique);
         } catch (err) {
             setError(err.message);
         }
@@ -61,6 +74,18 @@ export default function HomeClient() {
 
     return (
         <main className="main-content">
+            {/* Netflix-Style Mosaic Background */}
+            {movies.length > 0 && (
+                <div className="mosaic-background">
+                    <div className="mosaic-grid">
+                        {movies.slice(0, 30).map((m, i) => (
+                            <img key={`mosaic-${i}`} src={m.cover?.url || 'https://via.placeholder.com/300x450'} alt="" />
+                        ))}
+                    </div>
+                    <div className="mosaic-overlay"></div>
+                </div>
+            )}
+
             {/* Hero Section */}
             <section className="hero-section container">
                 <div className="hero-content">

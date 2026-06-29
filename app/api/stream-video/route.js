@@ -14,14 +14,20 @@ export async function GET(request) {
     if (range) headers['Range'] = range;
 
     try {
-        const cdnRes = await fetch(url, { headers });
+        const cdnRes = await fetch(url, { 
+            headers, 
+            redirect: 'follow',
+            cache: 'no-store'
+        });
+        
         const resHeaders = new Headers();
         resHeaders.set('Content-Type', cdnRes.headers.get('content-type') || 'video/mp4');
         resHeaders.set('Accept-Ranges', 'bytes');
+        resHeaders.set('Access-Control-Allow-Origin', '*');
+        resHeaders.set('Cache-Control', 'no-store');
+
         if (cdnRes.headers.get('content-length')) resHeaders.set('Content-Length', cdnRes.headers.get('content-length'));
         if (cdnRes.headers.get('content-range')) resHeaders.set('Content-Range', cdnRes.headers.get('content-range'));
-        // Allow seeking from frontend
-        resHeaders.set('Access-Control-Allow-Origin', '*');
 
         return new Response(cdnRes.body, {
             status: cdnRes.status,
@@ -31,3 +37,4 @@ export async function GET(request) {
         return new Response(`Stream error: ${e.message}`, { status: 500 });
     }
 }
+
