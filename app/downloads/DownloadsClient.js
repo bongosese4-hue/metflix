@@ -22,7 +22,7 @@ export default function DownloadsClient() {
                 >
                     Downloading
                     {activeTab === 'downloading' && (
-                        <div style={{ position: 'absolute', bottom: '-8px', left: 0, width: '100%', height: '3px', background: '#4CAF50', borderRadius: '2px' }} />
+                        <div style={{ position: 'absolute', bottom: '-8px', left: 0, width: '100%', height: '3px', background: '#e50914', borderRadius: '2px' }} />
                     )}
                 </div>
                 <div 
@@ -36,7 +36,7 @@ export default function DownloadsClient() {
                 >
                     Downloaded
                     {activeTab === 'downloaded' && (
-                        <div style={{ position: 'absolute', bottom: '-8px', left: 0, width: '100%', height: '3px', background: '#4CAF50', borderRadius: '2px' }} />
+                        <div style={{ position: 'absolute', bottom: '-8px', left: 0, width: '100%', height: '3px', background: '#e50914', borderRadius: '2px' }} />
                     )}
                 </div>
             </div>
@@ -55,7 +55,7 @@ export default function DownloadsClient() {
                                 <span>2.5MB/s</span>
                             </div>
                             <div style={{ width: '100%', height: '4px', background: '#333', borderRadius: '2px', overflow: 'hidden' }}>
-                                <div style={{ width: '15%', height: '100%', background: '#4CAF50' }}></div>
+                                <div style={{ width: '15%', height: '100%', background: '#e50914' }}></div>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                 <button style={{ background: '#333', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '20px', cursor: 'pointer' }}>Pause</button>
@@ -79,7 +79,7 @@ export default function DownloadsClient() {
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                             <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>The Matrix Resurrections</h3>
                             <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>1.8GB • MP4 • 1080p</p>
-                            <button style={{ background: '#4CAF50', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '20px', cursor: 'pointer', width: 'fit-content' }}>▶ Play</button>
+                            <button style={{ background: '#e50914', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '20px', cursor: 'pointer', width: 'fit-content' }}>▶ Play</button>
                         </div>
                     </div>
                 </div>

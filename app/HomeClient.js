@@ -130,7 +130,6 @@ export default function HomeClient() {
 
                 <div className="category-tabs">
                     <div className="category-tab active" onClick={() => router.push('/?q=trending')}>Trending</div>
-                    <div className="category-tab" onClick={() => router.push('/?q=world+cup')}>World Cup</div>
                     <div className="category-tab" onClick={() => router.push('/?q=series')}>TV/Series</div>
                     <div className="category-tab" onClick={() => router.push('/?q=movies')}>Movie</div>
                     <div className="category-tab" onClick={() => router.push('/?q=anime')}>Anime</div>
