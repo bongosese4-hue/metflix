@@ -12,21 +12,17 @@ export default function BottomNav() {
                 <span className="bottom-nav-icon">🏠</span>
                 <span>Home</span>
             </Link>
-            <Link href="#" className="bottom-nav-item">
+            <Link href="/?q=movies" className="bottom-nav-item">
+                <span className="bottom-nav-icon">🎬</span>
+                <span>Movies</span>
+            </Link>
+            <Link href="/?q=series" className="bottom-nav-item">
                 <span className="bottom-nav-icon">📺</span>
-                <span>ShortTV</span>
+                <span>Series</span>
             </Link>
-            <Link href="#" className="bottom-nav-item">
-                <span className="bottom-nav-icon">👑</span>
-                <span>Premium</span>
-            </Link>
-            <Link href="/downloads" className={`bottom-nav-item ${pathname === '/downloads' ? 'active' : ''}`}>
-                <span className="bottom-nav-icon">📥</span>
-                <span>Downloads</span>
-            </Link>
-            <Link href="#" className="bottom-nav-item">
-                <span className="bottom-nav-icon">👤</span>
-                <span>Me</span>
+            <Link href="/?q=anime" className="bottom-nav-item">
+                <span className="bottom-nav-icon">⚡</span>
+                <span>Anime</span>
             </Link>
         </nav>
     );

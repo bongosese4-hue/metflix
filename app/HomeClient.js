@@ -173,31 +173,30 @@ export default function HomeClient() {
                 {!loading && movies.length > 0 && (
                     <div className="movies-grid">
                         {movies.map((movie, index) => {
-                            const coverUrl = movie.cover?.url || 'https://via.placeholder.com/300x450?text=No+Poster';
+                            const coverUrl = movie.cover?.url || '';
                             const year = movie.releaseDate ? movie.releaseDate.split('-')[0] : 'N/A';
                             const sType = movie.subjectType || 1;
                             const watchUrl = `/watch?detailPath=${encodeURIComponent(movie.detailPath)}&subjectId=${movie.subjectId}&type=${sType}`;
 
                             return (
-                                <div className="movie-card" key={`${movie.subjectId}-${index}`}>
-                                    <Link href={watchUrl} className="poster-container" style={{ display: 'block', position: 'relative' }}>
-                                        <Image src={coverUrl} alt={movie.title} className="movie-poster" width={300} height={450} />
+                                <Link href={watchUrl} className="movie-card" key={`${movie.subjectId}-${index}`} style={{ textDecoration: 'none' }}>
+                                    <div className="poster-container" style={{ display: 'block', position: 'relative' }}>
+                                        {coverUrl
+                                            ? <Image src={coverUrl} alt={movie.title} className="movie-poster" width={300} height={450} unoptimized />
+                                            : <div className="poster-placeholder">{movie.title}</div>
+                                        }
                                         <div className="poster-overlay">
                                             <span className="play-icon">▶</span>
                                         </div>
-                                    </Link>
+                                    </div>
                                     <div className="movie-info">
                                         <div className="movie-title">{movie.title}</div>
                                         <div className="movie-meta">
                                             <span>{year}</span>
                                             <span>{sType === 2 ? 'Series' : 'Movie'}</span>
                                         </div>
-                                        <div className="card-btns">
-                                            <Link href={watchUrl} className="card-watch-btn">▶ Watch</Link>
-                                            <Link href={`${watchUrl}&action=download`} className="card-download-btn">⬇ Download</Link>
-                                        </div>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         })}
                     </div>

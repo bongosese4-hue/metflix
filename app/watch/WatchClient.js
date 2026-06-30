@@ -44,10 +44,7 @@ export default function WatchClient() {
         let isMounted = true;
         async function loadData() {
             if (!detailPath) {
-                if (isMounted) {
-                    setError('No movie specified.');
-                    setLoading(false);
-                }
+                if (isMounted) { setError('No movie specified.'); setLoading(false); }
                 return;
             }
             try {
@@ -76,10 +73,7 @@ export default function WatchClient() {
                     }, 600);
                 }
             } catch (err) {
-                if (isMounted) {
-                    setError(err.message);
-                    setLoading(false);
-                }
+                if (isMounted) { setError(err.message); setLoading(false); }
             }
         }
         loadData();
@@ -142,21 +136,22 @@ export default function WatchClient() {
     const year = movie.releaseDate ? movie.releaseDate.split('-')[0] : '';
     const rating = movie.imdbRatingValue;
     const safeTitle = (movie.title || 'Video').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
+    const seasons = movie.resource?.seasons || [];
+    const currentSeasonData = seasons.find(s => s.se === currentSeason);
+    const totalEps = currentSeasonData?.maxEp || 1;
 
     return (
         <>
             {/* Backdrop */}
             {backdropImg && (
-                <div
-                    className="hero-backdrop"
-                    style={{ backgroundImage: `url('${backdropImg}')` }}
-                >
+                <div className="hero-backdrop" style={{ backgroundImage: `url('${backdropImg}')` }}>
                     <div className="backdrop-overlay"></div>
                 </div>
             )}
 
             <div className="watch-main container">
-                {/* Player */}
+
+                {/* ── Player ── */}
                 <section className="player-section">
                     <div className="player-wrapper">
                         <video
@@ -169,17 +164,20 @@ export default function WatchClient() {
                         />
                         {!isPlaying && (
                             <div className="player-overlay">
-                                <button className="big-play-btn" onClick={() => downloads.length > 0 && playQuality(0)}>▶</button>
+                                <button
+                                    className="big-play-btn"
+                                    onClick={() => downloads.length > 0 && playQuality(0)}
+                                >▶</button>
                                 <p className="player-msg">
-                                    {downloads.length > 0 ? 'Click to start watching' : 'No streams available'}
+                                    {downloads.length > 0 ? 'Tap to watch' : 'No streams available'}
                                 </p>
                             </div>
                         )}
                     </div>
 
-                    {/* Quality bar */}
+                    {/* Quality Selector Row */}
                     <div className="quality-bar">
-                        <span className="quality-bar-label">Watch in:</span>
+                        <span className="quality-bar-label">Quality:</span>
                         <div className="quality-btns">
                             {downloads.length > 0
                                 ? downloads.map((dl, i) => (
@@ -194,30 +192,43 @@ export default function WatchClient() {
                                 : <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No streams available</span>
                             }
                         </div>
-
-                        {subjectType === 2 && movie.resource?.seasons && (
-                            <div className="ep-selector">
-                                <label>Season:</label>
-                                <select value={currentSeason} onChange={e => handleSeasonChange(parseInt(e.target.value))}>
-                                    {movie.resource.seasons.map(s => (
-                                        <option key={s.se} value={s.se}>Season {s.se}</option>
-                                    ))}
-                                </select>
-                                <label>Episode:</label>
-                                <select value={currentEp} onChange={e => handleEpChange(parseInt(e.target.value))}>
-                                    {Array.from(
-                                        { length: movie.resource.seasons.find(s => s.se === currentSeason)?.maxEp || 1 },
-                                        (_, i) => (
-                                            <option key={i + 1} value={i + 1}>Ep {i + 1}</option>
-                                        )
-                                    )}
-                                </select>
-                            </div>
-                        )}
                     </div>
+
+                    {/* ── Seasons & Episodes (Series only) ── */}
+                    {subjectType === 2 && seasons.length > 0 && (
+                        <div className="seasons-ep-panel">
+                            {/* Season buttons */}
+                            <div className="sep-label">Season</div>
+                            <div className="sep-seasons">
+                                {seasons.map(s => (
+                                    <button
+                                        key={s.se}
+                                        className={`sep-btn${s.se === currentSeason ? ' active' : ''}`}
+                                        onClick={() => handleSeasonChange(s.se)}
+                                    >
+                                        S{s.se}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Episode buttons */}
+                            <div className="sep-label">Episode</div>
+                            <div className="sep-episodes">
+                                {Array.from({ length: totalEps }, (_, i) => i + 1).map(ep => (
+                                    <button
+                                        key={ep}
+                                        className={`sep-ep-btn${ep === currentEp ? ' active' : ''}`}
+                                        onClick={() => handleEpChange(ep)}
+                                    >
+                                        {ep}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </section>
 
-                {/* Movie Info */}
+                {/* ── Movie Info ── */}
                 <section className="info-section">
                     <div className="info-left">
                         {coverUrl && <Image className="watch-poster" src={coverUrl} alt={movie.title} width={300} height={450} />}
@@ -236,26 +247,7 @@ export default function WatchClient() {
 
                         {/* Downloads */}
                         <div id="downloadSection" className="download-section">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
-                                <h3 style={{ margin: 0 }}>⬇ Download Options</h3>
-                                {subjectType === 2 && movie.resource?.seasons && (
-                                    <div className="ep-selector" style={{ margin: 0 }}>
-                                        <label>Season:</label>
-                                        <select value={currentSeason} onChange={e => handleSeasonChange(parseInt(e.target.value))}>
-                                            {movie.resource.seasons.map(s => (
-                                                <option key={s.se} value={s.se}>Season {s.se}</option>
-                                            ))}
-                                        </select>
-                                        <label>Ep:</label>
-                                        <select value={currentEp} onChange={e => handleEpChange(parseInt(e.target.value))}>
-                                            {Array.from(
-                                                { length: movie.resource.seasons.find(s => s.se === currentSeason)?.maxEp || 1 },
-                                                (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                            )}
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
+                            <h3>⬇ Download</h3>
                             <div className="quality-grid">
                                 {downloads.length > 0
                                     ? downloads.map((dl, i) => {
@@ -270,11 +262,8 @@ export default function WatchClient() {
                                             <a key={i} href={proxyUrl} download={filename} className="download-link">
                                                 <div className="dl-quality-row">
                                                     <span className={`quality-badge ${badgeClass}`}>{res}p</span>
-                                                    <div>
-                                                        <div className="download-quality">
-                                                            {res >= 1080 ? 'Full HD' : res >= 720 ? 'HD 720p' : res >= 480 ? 'SD 480p' : `Low ${res}p`}
-                                                        </div>
-                                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>{filename}</div>
+                                                    <div className="download-quality">
+                                                        {res >= 1080 ? 'Full HD' : res >= 720 ? 'HD 720p' : res >= 480 ? 'SD 480p' : `Low ${res}p`}
                                                     </div>
                                                 </div>
                                                 <span className="download-size">{sizeMB} MB ↓</span>
@@ -296,34 +285,15 @@ export default function WatchClient() {
                             {stars.slice(0, 10).map((s, i) => (
                                 <div className="cast-card" key={i}>
                                     <Image
-                                        src={s.avatarUrl || 'https://via.placeholder.com/80?text=?'}
+                                        src={s.avatarUrl || 'https://placehold.co/80x80?text=?'}
                                         className="cast-avatar"
                                         alt={s.name}
                                         width={80}
                                         height={80}
-                                        onError={e => { e.target.src = 'https://via.placeholder.com/80?text=?'; }}
+                                        unoptimized
                                     />
                                     <div className="cast-name">{s.name}</div>
                                     <div className="cast-role">{s.character || ''}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
-
-                {/* Seasons */}
-                {subjectType === 2 && movie.resource?.seasons && (
-                    <section className="seasons-section">
-                        <h2 className="section-title">Seasons & Episodes</h2>
-                        <div className="seasons-grid">
-                            {movie.resource.seasons.map(s => (
-                                <div
-                                    key={s.se}
-                                    className={`season-card${s.se === currentSeason ? ' active' : ''}`}
-                                    onClick={() => handleSeasonChange(s.se)}
-                                >
-                                    <div className="season-num">S{s.se}</div>
-                                    <div className="season-eps">{s.maxEp} episodes</div>
                                 </div>
                             ))}
                         </div>
@@ -338,28 +308,27 @@ export default function WatchClient() {
                         </h2>
                         <div className="movies-grid related-grid">
                             {related.map(m => {
-                                const cover = m.cover?.url || 'https://via.placeholder.com/200x300?text=No+Poster';
+                                const cover = m.cover?.url || '';
                                 const y = m.releaseDate ? m.releaseDate.split('-')[0] : 'N/A';
                                 const sT = m.subjectType || 1;
                                 const wUrl = `/watch?detailPath=${encodeURIComponent(m.detailPath)}&subjectId=${m.subjectId}&type=${sT}`;
                                 return (
-                                    <div className="movie-card" key={m.subjectId}>
-                                        <Link href={wUrl} className="poster-container" style={{ display: 'block', position: 'relative' }}>
-                                            <Image src={cover} alt={m.title} className="movie-poster" width={200} height={300} />
+                                    <Link href={wUrl} className="movie-card" key={m.subjectId} style={{ textDecoration: 'none' }}>
+                                        <div className="poster-container" style={{ display: 'block', position: 'relative' }}>
+                                            {cover
+                                                ? <Image src={cover} alt={m.title} className="movie-poster" width={200} height={300} unoptimized />
+                                                : <div className="poster-placeholder">{m.title}</div>
+                                            }
                                             <div className="poster-overlay"><span className="play-icon">▶</span></div>
-                                        </Link>
+                                        </div>
                                         <div className="movie-info">
                                             <div className="movie-title">{m.title}</div>
                                             <div className="movie-meta">
                                                 <span>{y}</span>
                                                 <span>{sT === 2 ? 'Series' : 'Movie'}</span>
                                             </div>
-                                            <div className="card-btns">
-                                                <Link href={wUrl} className="card-watch-btn">▶ Watch</Link>
-                                                <Link href={`${wUrl}&action=download`} className="card-download-btn">⬇ Download</Link>
-                                            </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 );
                             })}
                         </div>

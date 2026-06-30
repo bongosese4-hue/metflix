@@ -392,13 +392,19 @@ body {
 @media (max-width: 768px) {
     .info-section { flex-direction: column; align-items: center; text-align: center; }
     .watch-meta { justify-content: center; }
-    .watch-poster { width: 200px; }
-    .watch-title { font-size: 2.2rem; }
-    .movies-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.25rem; }
-    .hero-title { font-size: 2.5rem; }
+    .watch-poster { width: 160px; }
+    .watch-title { font-size: 1.8rem; }
+    .movies-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; }
+    .hero-title { font-size: 2rem; }
     .search-btn { padding: 0 1.5rem; }
     .ep-selector { margin-left: 0; width: 100%; justify-content: center; margin-top: 1rem; }
-    .quality-bar { flex-direction: column; text-align: center; }
+    .quality-bar { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+    /* Move player below header with proper spacing */
+    .watch-main { padding-top: 1rem; }
+    /* Make player aspect ratio standard 16:9 */
+    .player-wrapper { aspect-ratio: 16/9; border-radius: 0; border-left: none; border-right: none; }
+    /* Shrink big play button */
+    .big-play-btn { width: 60px; height: 60px; font-size: 1.5rem; }
 }
 
 
@@ -507,11 +513,25 @@ body {
 @media (max-width: 480px) {
     .movies-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
     .watch-poster { width: 110px; }
-    .watch-title { font-size: 1.3rem; }
-    .movie-info { padding: 0.5rem; }
-    .movie-title { font-size: 0.8rem; }
-    .movie-meta { font-size: 0.65rem; }
-    .card-watch-btn, .card-download-btn { font-size: 0.7rem; padding: 0.4rem; }
+    .watch-title { font-size: 1.1rem; }
+    .movie-info { padding: 0.4rem; }
+    .movie-title { font-size: 0.75rem; }
+    .movie-meta { font-size: 0.62rem; }
+}
+
+/* poster placeholder for missing images */
+.poster-placeholder {
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 /* ── Moviebox Mobile UI ── */
@@ -519,13 +539,19 @@ body {
     display: none;
     position: fixed;
     bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
-    background: #111;
+    background: rgba(10, 5, 5, 0.97);
     border-top: 1px solid #333;
-    z-index: 1000;
+    z-index: 9999;
     justify-content: space-around;
-    padding: 0.5rem 0;
-    box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+    padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.7);
+    backdrop-filter: blur(16px);
+    /* Make it immune to scroll */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 .bottom-nav-item {
@@ -533,10 +559,12 @@ body {
     flex-direction: column;
     align-items: center;
     color: var(--text-secondary);
-    font-size: 0.7rem;
-    gap: 0.2rem;
+    font-size: 0.65rem;
+    gap: 0.15rem;
     text-decoration: none;
-    transition: color 0.3s;
+    transition: color 0.25s;
+    padding: 0.25rem 0.5rem;
+    flex: 1;
 }
 
 .bottom-nav-item.active {
@@ -544,64 +572,187 @@ body {
 }
 
 .bottom-nav-icon {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
+    line-height: 1;
 }
 
 .category-tabs {
     display: flex;
     overflow-x: auto;
-    gap: 1rem;
+    gap: 1.25rem;
     padding: 0.5rem 0;
     margin-bottom: 1rem;
     white-space: nowrap;
+    scrollbar-width: none;
 }
-
 .category-tabs::-webkit-scrollbar { display: none; }
 
 .category-tab {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
     position: relative;
     padding-bottom: 0.5rem;
+    flex-shrink: 0;
 }
-
-.category-tab.active {
-    color: #fff;
-}
+.category-tab.active { color: #fff; }
 .category-tab.active::after {
     content: '';
     position: absolute;
     bottom: 0;
-    left: 20%;
-    width: 60%;
+    left: 0;
+    width: 100%;
     height: 3px;
     background: var(--accent-color);
     border-radius: 2px;
 }
 
-/* Mobile-specific adjustments */
+/* ── Seasons / Episodes Panel ── */
+.seasons-ep-panel {
+    background: rgba(20,20,20,0.8);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-top: 0.75rem;
+}
+.sep-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    margin-top: 0.75rem;
+}
+.sep-label:first-child { margin-top: 0; }
+.sep-seasons, .sep-episodes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.sep-btn {
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.sep-btn:hover, .sep-btn.active {
+    background: var(--accent-gradient);
+    border-color: var(--accent-color);
+    color: #fff;
+}
+.sep-ep-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sep-ep-btn:hover, .sep-ep-btn.active {
+    background: var(--accent-gradient);
+    border-color: var(--accent-color);
+    color: #fff;
+}
+
+/* ── Mobile Layout ── */
+/* search bar visible only on mobile */
+.search-bar-mobile {
+    display: none;
+    align-items: center;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 24px;
+    padding: 0.55rem 1rem;
+    margin-top: 1rem;
+    margin-bottom: 0.75rem;
+}
+.search-bar-mobile input {
+    background: transparent;
+    border: none;
+    color: #fff;
+    width: 100%;
+    outline: none;
+    margin-left: 0.5rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+}
+
 @media (max-width: 768px) {
-    body { padding-bottom: 60px; /* space for bottom nav */ }
+    body { padding-bottom: 70px; }
     .bottom-nav { display: flex; }
-    .hero-section { display: none; /* Hide hero on mobile to match screenshot */ }
+    /* Keep header visible on mobile for logo/hamburger */
+    .hero-section { display: none; }
     .results-header { display: none; }
-    .search-bar-mobile {
-        display: flex;
-        align-items: center;
-        background: #222;
-        border-radius: 20px;
-        padding: 0.5rem 1rem;
-        margin-top: 1rem;
-        margin-bottom: 1rem;
+    .search-bar-mobile { display: flex; }
+    /* On mobile, nav drawer sits behind hamburger, not always visible */
+    .nav-links {
+        position: fixed; top: 0; right: -300px;
+        width: 270px; height: 100vh;
+        background: rgba(8, 3, 3, 0.99);
+        backdrop-filter: blur(24px);
+        border-left: 1px solid var(--glass-border);
+        flex-direction: column; align-items: flex-start;
+        padding: 5rem 2rem 2rem; gap: 1.5rem;
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 200;
+        box-shadow: -10px 0 40px rgba(0,0,0,0.9);
+        /* Hide by default even at any zoom level */
+        display: none;
     }
-    .search-bar-mobile input {
-        background: transparent;
-        border: none;
-        color: #fff;
-        width: 100%;
-        outline: none;
-        margin-left: 0.5rem;
+    .nav-links.mobile-open { display: flex; right: 0; }
+    .hamburger-btn { display: flex; }
+    .mobile-overlay { display: block; }
+    /* movie grid: 3 col on mobile */
+    .movies-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.4rem;
     }
+    .movie-card { border-radius: 8px; }
+    .movie-info { padding: 0.4rem 0.3rem; }
+    .movie-title { font-size: 0.7rem; -webkit-line-clamp: 2; }
+    .movie-meta { font-size: 0.6rem; margin-bottom: 0; flex-direction: column; gap: 0; }
+    .card-btns { display: none; /* no buttons on mobile cards */ }
+    .poster-container { border-radius: 6px; }
+    /* Watch page spacing */
+    .watch-main { padding-top: 0.5rem; padding-bottom: 5rem; }
+    .player-section { margin-bottom: 1rem; }
+    /* seasons panel full width scroll */
+    .sep-episodes { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.5rem; }
+    .sep-episodes::-webkit-scrollbar { display: none; }
+}
+
+@media (min-width: 769px) {
+    /* On desktop make sure nav-links is always visible as normal flex row */
+    .nav-links {
+        display: flex !important;
+        position: static !important;
+        right: auto !important;
+        width: auto !important;
+        height: auto !important;
+        background: none !important;
+        backdrop-filter: none !important;
+        border: none !important;
+        flex-direction: row !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+    .hamburger-btn { display: none !important; }
+    .search-bar-mobile { display: none !important; }
+    .category-tabs { display: none !important; /* only on mobile */ }
 }
