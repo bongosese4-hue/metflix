@@ -5,6 +5,19 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+// Array shuffle helper
+const shuffleArray = (array) => {
+    let curId = array.length;
+    while (curId !== 0) {
+        let randId = Math.floor(Math.random() * curId);
+        curId -= 1;
+        let tmp = array[curId];
+        array[curId] = array[randId];
+        array[randId] = tmp;
+    }
+    return array;
+};
+
 export default function HomeClient() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -79,8 +92,14 @@ export default function HomeClient() {
                     unique.push(m);
                 }
             }
-            if (isLoadMore) setMovies(prev => [...prev, ...unique]);
-            else setMovies(unique);
+            
+            // Shuffle if we are on the homepage (Trending Now / Latest)
+            const qParam = searchParams.get('q');
+            const shouldShuffle = !qParam || qParam === 'trending';
+            const finalResults = shouldShuffle ? shuffleArray(unique) : unique;
+
+            if (isLoadMore) setMovies(prev => [...prev, ...finalResults]);
+            else setMovies(finalResults);
             
             setPage(targetPage);
         } catch (err) {
@@ -155,12 +174,11 @@ export default function HomeClient() {
                         onChange={(e) => setQuery(e.target.value)}
                     />
                 </form>
-
                 <div className="category-tabs">
-                    <div className="category-tab active" onClick={() => router.push('/?q=trending')}>Trending</div>
-                    <div className="category-tab" onClick={() => router.push('/?q=series')}>TV/Series</div>
-                    <div className="category-tab" onClick={() => router.push('/?q=movies')}>Movie</div>
-                    <div className="category-tab" onClick={() => router.push('/?q=anime')}>Anime</div>
+                    <div className={`category-tab ${(!searchParams.get('q') || searchParams.get('q') === 'trending') ? 'active' : ''}`} onClick={() => router.push('/?q=trending')}>Trending</div>
+                    <div className={`category-tab ${searchParams.get('q') === 'series' ? 'active' : ''}`} onClick={() => router.push('/?q=series')}>TV/Series</div>
+                    <div className={`category-tab ${searchParams.get('q') === 'movies' ? 'active' : ''}`} onClick={() => router.push('/?q=movies')}>Movie</div>
+                    <div className={`category-tab ${searchParams.get('q') === 'anime' ? 'active' : ''}`} onClick={() => router.push('/?q=anime')}>Anime</div>
                 </div>
 
                 <div className="category-tabs" style={{ marginBottom: '2rem' }}>

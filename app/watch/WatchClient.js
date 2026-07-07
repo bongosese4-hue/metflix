@@ -476,6 +476,24 @@ export default function WatchClient() {
                                     : !dlLoading && <p className="text-secondary" style={{ color: 'var(--text-secondary)' }}>No download links available.</p>
                                 }
                             </div>
+
+                            {/* Subtitle Downloads */}
+                            {!dlLoading && dlLinks.length > 0 && dlLinks[0].subtitles && dlLinks[0].subtitles.length > 0 && (
+                                <div className="subtitles-download-section" style={{ marginTop: '2rem' }}>
+                                    <h4 style={{ marginBottom: '1rem', color: '#fff' }}>💬 Subtitles</h4>
+                                    <div className="quality-grid">
+                                        {dlLinks[0].subtitles.map((sub, i) => (
+                                            <a key={i} href={sub.url} download={`${safeTitle}_${sub.lang}.vtt`} target="_blank" rel="noreferrer" className="download-link" style={{ background: '#222', borderColor: '#444' }}>
+                                                <div className="dl-quality-row">
+                                                    <span className="quality-badge" style={{ background: '#444' }}>{sub.lang}</span>
+                                                    <div className="download-quality">{sub.name || sub.lang || `Subtitle ${i+1}`}</div>
+                                                </div>
+                                                <span className="download-size" style={{ color: '#aaa' }}>Download ↓</span>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </section>
