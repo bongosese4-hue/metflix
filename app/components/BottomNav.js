@@ -20,9 +20,13 @@ export default function BottomNav() {
                 <span className="bottom-nav-icon">📺</span>
                 <span>Series</span>
             </Link>
-            <Link href="/?q=anime" className="bottom-nav-item">
-                <span className="bottom-nav-icon">⚡</span>
-                <span>Anime</span>
+            <Link href="/watchlist" className={`bottom-nav-item ${pathname === '/watchlist' ? 'active' : ''}`}>
+                <span className="bottom-nav-icon">⭐</span>
+                <span>Watchlist</span>
+            </Link>
+            <Link href="/history" className={`bottom-nav-item ${pathname === '/history' ? 'active' : ''}`}>
+                <span className="bottom-nav-icon">🕒</span>
+                <span>History</span>
             </Link>
         </nav>
     );

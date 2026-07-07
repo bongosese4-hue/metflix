@@ -22,9 +22,12 @@ export default function Navbar() {
                 </Link>
 
                 <nav className="nav-links">
-                    <Link href="/?q=trending" className="nav-link">Home</Link>
+                    <Link href="/?q=trending" className="nav-link">Trending</Link>
+                    <Link href="/?q=series" className="nav-link">TV/Series</Link>
                     <Link href="/?q=movies" className="nav-link">Movies</Link>
-                    <Link href="/?q=series" className="nav-link">Series</Link>
+                    <Link href="/?q=anime" className="nav-link">Anime</Link>
+                    <Link href="/watchlist" className="nav-link">Watchlist</Link>
+                    <Link href="/history" className="nav-link">History</Link>
                 </nav>
             </div>
         </header>

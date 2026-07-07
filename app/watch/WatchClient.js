@@ -63,6 +63,7 @@ export default function WatchClient() {
 
     const [loading, setLoading] = useState(true);
     const [error,   setError]   = useState(null);
+    const [inWatchlist, setInWatchlist] = useState(false);
 
     const videoRef = useRef(null);
 
@@ -174,7 +175,76 @@ export default function WatchClient() {
         setTimeout(() => {
             if (videoRef.current) { videoRef.current.load(); videoRef.current.play().catch(() => {}); }
         }, 100);
+
+        // Save to Watch History
+        if (movie) {
+            try {
+                const history = JSON.parse(localStorage.getItem('metflix_history') || '[]');
+                const existing = history.filter(m => m.subjectId !== subjectId);
+                existing.unshift({
+                    subjectId, subjectType, detailPath,
+                    title: movie.title,
+                    coverUrl: movie.cover?.url,
+                    lastWatched: new Date().toISOString()
+                });
+                localStorage.setItem('metflix_history', JSON.stringify(existing.slice(0, 50)));
+            } catch (e) {}
+        }
     };
+
+    // ── Watchlist Toggle ───────────────────────────────────────────
+    useEffect(() => {
+        if (!movie) return;
+        try {
+            const w = JSON.parse(localStorage.getItem('metflix_watchlist') || '[]');
+            setInWatchlist(w.some(m => m.subjectId === subjectId));
+        } catch(e) {}
+    }, [movie, subjectId]);
+
+    const toggleWatchlist = () => {
+        if (!movie) return;
+        try {
+            let w = JSON.parse(localStorage.getItem('metflix_watchlist') || '[]');
+            if (inWatchlist) {
+                w = w.filter(m => m.subjectId !== subjectId);
+                setInWatchlist(false);
+            } else {
+                w.unshift({
+                    subjectId, subjectType, detailPath,
+                    title: movie.title,
+                    coverUrl: movie.cover?.url
+                });
+                setInWatchlist(true);
+            }
+            localStorage.setItem('metflix_watchlist', JSON.stringify(w));
+        } catch (e) {}
+    };
+
+    // ── Video Controls (Skip / AutoPlay Next) ──────────────────────
+    const skipForward = () => { if (videoRef.current) videoRef.current.currentTime += 10; };
+    const skipBackward = () => { if (videoRef.current) videoRef.current.currentTime -= 10; };
+
+    useEffect(() => {
+        const vid = videoRef.current;
+        if (!vid) return;
+        
+        const handleEnded = () => {
+            // Auto play next episode if series
+            if (subjectType === 2 && playerDls.length > 0) {
+                const maxEp = seasons.find(s => s.se === playerSe)?.maxEp || 1;
+                if (playerEp < maxEp) {
+                    handlePlayerEpChange(playerEp + 1);
+                } else {
+                    const nextSe = playerSe + 1;
+                    if (seasons.some(s => s.se === nextSe)) {
+                        handlePlayerSeasonChange(nextSe);
+                    }
+                }
+            }
+        };
+        vid.addEventListener('ended', handleEnded);
+        return () => vid.removeEventListener('ended', handleEnded);
+    }, [subjectType, playerSe, playerEp, seasons, playerDls]);
 
     // ── Render guards ──────────────────────────────────────────────
     if (loading) return (
@@ -223,6 +293,12 @@ export default function WatchClient() {
                             poster={!isPlaying ? coverUrl : undefined}
                             src={streamUrl || undefined}
                         />
+                        {isPlaying && (
+                            <div className="player-skip-controls">
+                                <button className="skip-btn skip-back" onClick={skipBackward}>↺ 10s</button>
+                                <button className="skip-btn skip-forward" onClick={skipForward}>10s ↻</button>
+                            </div>
+                        )}
                         {!isPlaying && (
                             <div className="player-overlay">
                                 <button className="big-play-btn"
@@ -301,6 +377,13 @@ export default function WatchClient() {
                     <div className="info-right">
                         {movie.corner && <div className="corner-badge">{movie.corner}</div>}
                         <h1 className="watch-title">{movie.title}</h1>
+                        <button 
+                            className={`watchlist-btn ${inWatchlist ? 'active' : ''}`} 
+                            onClick={toggleWatchlist}
+                            style={{ margin: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', background: inWatchlist ? 'var(--accent-gradient)' : '#1e1e1e', border: '1px solid #333', padding: '0.5rem 1rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                            {inWatchlist ? '★ Added to Watchlist' : '☆ Add to Watchlist'}
+                        </button>
                         <div className="watch-meta">
                             {rating && <span className="meta-chip rating">★ {rating} IMDB</span>}
                             {year && <span className="meta-chip">📅 {year}</span>}
@@ -391,6 +474,34 @@ export default function WatchClient() {
                         </div>
                     </div>
                 </section>
+
+                {/* ═══════════════════════════════════════════════
+                    MORE LIKE THIS
+                ═══════════════════════════════════════════════ */}
+                {related.length > 0 && (
+                    <section className="related-section" style={{ marginTop: '3rem', borderTop: '1px solid #222', paddingTop: '2rem' }}>
+                        <h2 className="section-title">More Like This</h2>
+                        <div className="movies-grid">
+                            {related.map((m, idx) => {
+                                const relType = m.subjectType || 1;
+                                const relUrl = `/watch?detailPath=${encodeURIComponent(m.detailPath)}&subjectId=${m.subjectId}&type=${relType}`;
+                                return (
+                                    <Link href={relUrl} key={idx} className="movie-card" style={{ textDecoration: 'none' }}>
+                                        <div className="poster-container">
+                                            <Image src={m.coverUrl || 'https://via.placeholder.com/300x450'} alt={m.title} width={300} height={450} className="movie-poster" unoptimized />
+                                        </div>
+                                        <div className="movie-info">
+                                            <h3 className="movie-title">{m.title}</h3>
+                                            <div className="movie-meta">
+                                                <span>{relType === 2 ? 'Series' : 'Movie'}</span>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
 
                 {/* Cast */}
                 {stars.length > 0 && (

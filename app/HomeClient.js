@@ -12,9 +12,11 @@ export default function HomeClient() {
     const [query, setQuery] = useState('');
     const [movies, setMovies] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
     const [title, setTitle] = useState('Trending Now');
     const [bannerIndex, setBannerIndex] = useState(0);
+    const [page, setPage] = useState(1);
     const abortControllerRef = useRef(null);
 
     useEffect(() => {
@@ -27,37 +29,39 @@ export default function HomeClient() {
 
     useEffect(() => {
         const qParam = searchParams.get('q');
+        setPage(1);
         if (qParam === 'movies') {
             setTitle('Trending Movies');
             setQuery('');
-            fetchMultiple([{q: '2026', type: 1}, {q: 'avengers', type: 1}, {q: 'matrix', type: 1}]);
+            fetchMultiple([{q: '2026', type: 1}, {q: 'avengers', type: 1}, {q: 'matrix', type: 1}], 1, false);
         } else if (qParam === 'series') {
             setTitle('Trending Series');
             setQuery('');
-            fetchMultiple([{q: '2026', type: 2}, {q: 'breaking', type: 2}, {q: 'boys', type: 2}]);
+            fetchMultiple([{q: '2026', type: 2}, {q: 'breaking', type: 2}, {q: 'boys', type: 2}], 1, false);
         } else if (qParam && qParam !== 'trending') {
             setTitle(`Search Results for "${qParam}"`);
             setQuery(qParam);
-            fetchMultiple([{q: qParam, type: 0}]); // Single search
+            fetchMultiple([{q: qParam, type: 0}], 1, false); // Single search
         } else {
             setTitle('2026 Latest Releases');
-            fetchMultiple([{q: '2026', type: 0}, {q: 'latest', type: 0}]);
+            fetchMultiple([{q: '2026', type: 0}, {q: 'latest', type: 0}], 1, false);
         }
     }, [searchParams]);
 
-    const fetchMultiple = async (queries) => {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
+    const fetchMultiple = async (queries, targetPage = 1, isLoadMore = false) => {
+        if (!isLoadMore) {
+            if (abortControllerRef.current) abortControllerRef.current.abort();
+            abortControllerRef.current = new AbortController();
         }
-        abortControllerRef.current = new AbortController();
-        const signal = abortControllerRef.current.signal;
+        const signal = abortControllerRef.current?.signal;
 
-        setLoading(true);
+        if (isLoadMore) setLoadingMore(true);
+        else { setLoading(true); setMovies([]); }
+        
         setError(null);
-        setMovies([]);
         try {
             const promises = queries.map(queryObj => 
-                fetch(`/api/search?q=${encodeURIComponent(queryObj.q)}&type=${queryObj.type}`, { signal }).then(r => r.json())
+                fetch(`/api/search?q=${encodeURIComponent(queryObj.q)}&type=${queryObj.type}&page=${targetPage}&per_page=30`, { signal }).then(r => r.json())
             );
             const results = await Promise.all(promises);
             let combined = [];
@@ -68,19 +72,34 @@ export default function HomeClient() {
             });
             // Remove duplicates by subjectId
             const unique = [];
-            const seen = new Set();
+            const seen = new Set(isLoadMore ? movies.map(m => m.subjectId) : []);
             for (const m of combined) {
                 if (!seen.has(m.subjectId)) {
                     seen.add(m.subjectId);
                     unique.push(m);
                 }
             }
-            setMovies(unique);
+            if (isLoadMore) setMovies(prev => [...prev, ...unique]);
+            else setMovies(unique);
+            
+            setPage(targetPage);
         } catch (err) {
             if (err.name === 'AbortError') return;
             setError(err.message);
         }
         setLoading(false);
+        setLoadingMore(false);
+    };
+
+    const handleLoadMore = () => {
+        const qParam = searchParams.get('q');
+        let queries = [];
+        if (qParam === 'movies') queries = [{q: '2026', type: 1}, {q: 'avengers', type: 1}, {q: 'matrix', type: 1}];
+        else if (qParam === 'series') queries = [{q: '2026', type: 2}, {q: 'breaking', type: 2}, {q: 'boys', type: 2}];
+        else if (qParam && qParam !== 'trending') queries = [{q: qParam, type: 0}];
+        else queries = [{q: '2026', type: 0}, {q: 'latest', type: 0}];
+        
+        fetchMultiple(queries, page + 1, true);
     };
 
     const handleSearch = (e) => {
@@ -243,6 +262,19 @@ export default function HomeClient() {
                                 </Link>
                             );
                         })}
+                    </div>
+                )}
+
+                {movies.length > 0 && !loading && (
+                    <div style={{ textAlign: 'center', margin: '3rem 0' }}>
+                        <button 
+                            className="primary-btn" 
+                            onClick={handleLoadMore}
+                            disabled={loadingMore}
+                            style={{ padding: '0.75rem 2rem', fontSize: '1rem', borderRadius: '24px' }}
+                        >
+                            {loadingMore ? 'Loading...' : 'Load More ▼'}
+                        </button>
                     </div>
                 )}
             </section>
