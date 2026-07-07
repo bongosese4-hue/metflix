@@ -14,25 +14,34 @@ export default function HomeClient() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [title, setTitle] = useState('Trending Now');
+    const [bannerIndex, setBannerIndex] = useState(0);
     const abortControllerRef = useRef(null);
+
+    useEffect(() => {
+        if (movies.length === 0) return;
+        const interval = setInterval(() => {
+            setBannerIndex((prev) => (prev + 1) % Math.min(5, movies.length));
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [movies]);
 
     useEffect(() => {
         const qParam = searchParams.get('q');
         if (qParam === 'movies') {
             setTitle('Trending Movies');
             setQuery('');
-            fetchMultiple(['avengers', 'mission impossible', 'john wick', 'fast', 'matrix']);
+            fetchMultiple([{q: '2026', type: 1}, {q: 'avengers', type: 1}, {q: 'matrix', type: 1}]);
         } else if (qParam === 'series') {
             setTitle('Trending Series');
             setQuery('');
-            fetchMultiple(['breaking', 'game of thrones', 'stranger', 'boys', 'witcher']);
+            fetchMultiple([{q: '2026', type: 2}, {q: 'breaking', type: 2}, {q: 'boys', type: 2}]);
         } else if (qParam && qParam !== 'trending') {
             setTitle(`Search Results for "${qParam}"`);
             setQuery(qParam);
-            fetchMultiple([qParam]); // Single search
+            fetchMultiple([{q: qParam, type: 0}]); // Single search
         } else {
-            setTitle('Trending Now');
-            fetchMultiple(['marvel', 'dc', 'avatar', 'spider', 'batman', 'star wars']);
+            setTitle('2026 Latest Releases');
+            fetchMultiple([{q: '2026', type: 0}, {q: 'latest', type: 0}]);
         }
     }, [searchParams]);
 
@@ -47,8 +56,8 @@ export default function HomeClient() {
         setError(null);
         setMovies([]);
         try {
-            const promises = queries.map(q => 
-                fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal }).then(r => r.json())
+            const promises = queries.map(queryObj => 
+                fetch(`/api/search?q=${encodeURIComponent(queryObj.q)}&type=${queryObj.type}`, { signal }).then(r => r.json())
             );
             const results = await Promise.all(promises);
             let combined = [];
@@ -98,8 +107,8 @@ export default function HomeClient() {
             {/* Hero Section (Hidden on Mobile) */}
             <section className="hero-section container">
                 <div className="hero-content">
-                    <h1 className="hero-title">Unlimited movies,<br />TV shows, and more.</h1>
-                    <p className="hero-subtitle">Stream online or download in up to 1080p. Free. No ads.</p>
+                    <h1 className="hero-title">Cinematic Brilliance.<br />Zero Interruptions.</h1>
+                    <p className="hero-subtitle">Experience the ultimate collection of blockbuster movies and binge-worthy series in stunning 4K. Completely free. No strings attached.</p>
 
                     <form className="search-bar" onSubmit={handleSearch}>
                         <input
@@ -143,6 +152,41 @@ export default function HomeClient() {
                     <div className="category-tab" style={{fontSize: '0.85rem', background: '#333', padding: '0.3rem 0.8rem', borderRadius: '20px'}}>K-Drama</div>
                     <div className="category-tab" style={{fontSize: '0.85rem', background: '#333', padding: '0.3rem 0.8rem', borderRadius: '20px'}}>Filter ▼</div>
                 </div>
+
+                {/* Mobile Slider Banner */}
+                {movies.length > 0 && (
+                    <div className="mobile-banner-carousel">
+                        <div className="banner-track" style={{ transform: `translateX(-${bannerIndex * 100}%)` }}>
+                            {movies.slice(0, 5).map((m, idx) => {
+                                const cover = m.cover?.url || '';
+                                const year = m.releaseDate ? m.releaseDate.split('-')[0] : '';
+                                const sT = m.subjectType || 1;
+                                const wUrl = `/watch?detailPath=${encodeURIComponent(m.detailPath)}&subjectId=${m.subjectId}&type=${sT}`;
+                                return (
+                                    <div className="banner-slide" key={`banner-${idx}`}>
+                                        <div className="banner-image" style={{ backgroundImage: `url('${cover}')` }}></div>
+                                        <div className="banner-overlay"></div>
+                                        <div className="banner-content">
+                                            <h2 className="banner-title">{m.title}</h2>
+                                            <div className="banner-meta">
+                                                <span>{year}</span>
+                                                <span>{sT === 2 ? 'Series' : 'Movie'}</span>
+                                            </div>
+                                            <Link href={wUrl} className="primary-btn banner-btn">
+                                                ▶ Play Now
+                                            </Link>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="banner-indicators">
+                            {movies.slice(0, 5).map((_, idx) => (
+                                <div key={idx} className={`indicator ${idx === bannerIndex ? 'active' : ''}`}></div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Results Section */}

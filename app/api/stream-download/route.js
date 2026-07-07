@@ -1,3 +1,4 @@
+// Route: /api/stream-download
 export const runtime = 'edge';
 
 const CDN_HEADERS = {

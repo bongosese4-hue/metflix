@@ -1,3 +1,4 @@
+// Route: /api/related
 import { NextResponse } from 'next/server';
 import { API_BASE, getHeaders } from '../config';
 

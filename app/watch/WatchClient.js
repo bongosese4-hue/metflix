@@ -5,41 +5,77 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// ── Helpers ────────────────────────────────────────────────────────
+const getQualBtnClass = (res) => {
+    const r = parseInt(res);
+    if (r >= 2160) return 'qual-4k';
+    if (r >= 1080) return 'qual-fhd';
+    if (r >= 720)  return 'qual-hd';
+    if (r >= 480)  return 'qual-sd';
+    return 'qual-low';
+};
+const getBadgeClass = (res) => {
+    const r = parseInt(res);
+    if (r >= 2160) return 'badge-4k';
+    if (r >= 1080) return 'badge-fhd';
+    if (r >= 720)  return 'badge-hd';
+    if (r >= 480)  return 'badge-sd';
+    return 'badge-low';
+};
+const getQualityLabel = (res) => {
+    const r = parseInt(res);
+    if (r >= 2160) return '4K Ultra HD';
+    if (r >= 1080) return 'Full HD 1080p';
+    if (r >= 720)  return 'HD 720p';
+    if (r >= 480)  return 'SD 480p';
+    return `Low ${res}p`;
+};
+
 export default function WatchClient() {
     const searchParams = useSearchParams();
-    const detailPath = searchParams.get('detailPath');
-    const subjectId = searchParams.get('subjectId');
+    const detailPath  = searchParams.get('detailPath');
+    const subjectId   = searchParams.get('subjectId');
     const subjectType = parseInt(searchParams.get('type') || '1');
-    const action = searchParams.get('action');
+    const action      = searchParams.get('action');
 
-    const [movie, setMovie] = useState(null);
-    const [stars, setStars] = useState([]);
-    const [downloads, setDownloads] = useState([]);
+    const [movie,   setMovie]   = useState(null);
+    const [stars,   setStars]   = useState([]);
     const [related, setRelated] = useState([]);
-    const [currentSeason, setCurrentSeason] = useState(1);
-    const [currentEp, setCurrentEp] = useState(1);
-    const [activeStreamUrl, setActiveStreamUrl] = useState('');
-    const [activeQualityIndex, setActiveQualityIndex] = useState(-1);
-    const [isPlaying, setIsPlaying] = useState(false);
+
+    // seasons discovered from API
+    const [seasons,     setSeasons]     = useState([]);
+    const [seasonsLoading, setSeasonsLoading] = useState(false);
+
+    // Player state
+    const [playerSe,  setPlayerSe]  = useState(1);
+    const [playerEp,  setPlayerEp]  = useState(1);
+    const [playerDls, setPlayerDls] = useState([]);
+    const [playerDlLoading, setPlayerDlLoading] = useState(false);
+    const [activeQIdx, setActiveQIdx] = useState(-1);
+    const [streamUrl, setStreamUrl]  = useState('');
+    const [isPlaying, setIsPlaying]  = useState(false);
+
+    // Download section state
+    const [dlSe,      setDlSe]      = useState(1);
+    const [dlEp,      setDlEp]      = useState(1);
+    const [dlLinks,   setDlLinks]   = useState([]);
+    const [dlLoading, setDlLoading] = useState(false);
+
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error,   setError]   = useState(null);
 
     const videoRef = useRef(null);
 
-    const fetchDownloads = useCallback(async (sid, se, ep, dPath) => {
+    // ── Fetch downloads for a given se/ep ──────────────────────────
+    const fetchLinks = useCallback(async (sid, se, ep, dPath) => {
         try {
-            const res = await fetch(`/api/download?subjectId=${sid}&se=${se}&ep=${ep}&detailPath=${encodeURIComponent(dPath)}`);
+            const res  = await fetch(`/api/download?subjectId=${sid}&se=${se}&ep=${ep}&detailPath=${encodeURIComponent(dPath)}`);
             const data = await res.json();
-            const dls = (data.data && (data.data.downloads || data.data.list)) || [];
-            setDownloads(dls);
-            setActiveQualityIndex(-1);
-            return dls;
-        } catch (e) {
-            console.error('Downloads failed', e);
-            return [];
-        }
+            return (data.data && (data.data.downloads || data.data.list)) || [];
+        } catch { return []; }
     }, []);
 
+    // ── Initial data load ──────────────────────────────────────────
     useEffect(() => {
         let isMounted = true;
         async function loadData() {
@@ -52,11 +88,7 @@ export default function WatchClient() {
                 const detailData = await resDetail.json();
                 const m = detailData.data?.subject || detailData.data;
                 if (!m) throw new Error('Movie data not found');
-
-                if (isMounted) {
-                    setMovie(m);
-                    setStars(detailData.data?.stars || []);
-                }
+                if (isMounted) { setMovie(m); setStars(detailData.data?.stars || []); }
 
                 if (m.genre) {
                     fetch(`/api/related?genre=${encodeURIComponent(m.genre)}&exclude_id=${subjectId}`)
@@ -64,13 +96,32 @@ export default function WatchClient() {
                         .then(d => { if (d.data?.items && isMounted) setRelated(d.data.items); });
                 }
 
-                await fetchDownloads(subjectId, subjectType === 2 ? 1 : 0, subjectType === 2 ? 1 : 0, detailPath);
-                if (isMounted) setLoading(false);
+                // Load first episode downloads
+                const initSe = subjectType === 2 ? 1 : 0;
+                const initEp = subjectType === 2 ? 1 : 0;
+                const dls = await fetchLinks(subjectId, initSe, initEp, detailPath);
+                if (isMounted) {
+                    setPlayerDls(dls);
+                    setDlLinks(dls);
+                    setLoading(false);
+                }
 
                 if (action === 'download' && isMounted) {
-                    setTimeout(() => {
-                        document.getElementById('downloadSection')?.scrollIntoView({ behavior: 'smooth' });
-                    }, 600);
+                    setTimeout(() => document.getElementById('downloadSection')?.scrollIntoView({ behavior: 'smooth' }), 600);
+                }
+
+                // For series: discover seasons/episodes in the background
+                if (subjectType === 2 && isMounted) {
+                    setSeasonsLoading(true);
+                    fetch(`/api/seasons?subjectId=${subjectId}&detailPath=${encodeURIComponent(detailPath)}`)
+                        .then(r => r.json())
+                        .then(d => {
+                            if (isMounted && d.seasons?.length) {
+                                setSeasons(d.seasons);
+                            }
+                        })
+                        .catch(() => {})
+                        .finally(() => { if (isMounted) setSeasonsLoading(false); });
                 }
             } catch (err) {
                 if (isMounted) { setError(err.message); setLoading(false); }
@@ -78,71 +129,82 @@ export default function WatchClient() {
         }
         loadData();
         return () => { isMounted = false; };
-    }, [detailPath, subjectId, subjectType, action, fetchDownloads]);
+    }, [detailPath, subjectId, subjectType, action, fetchLinks]);
 
-    const handleSeasonChange = (se) => {
-        setCurrentSeason(se);
-        setCurrentEp(1);
-        setIsPlaying(false);
-        setActiveStreamUrl('');
-        fetchDownloads(subjectId, se, 1, detailPath);
+    // ── Player: season/ep change ───────────────────────────────────
+    const handlePlayerSeasonChange = async (se) => {
+        setPlayerSe(se); setPlayerEp(1);
+        setIsPlaying(false); setStreamUrl(''); setActiveQIdx(-1);
+        setPlayerDlLoading(true);
+        const dls = await fetchLinks(subjectId, se, 1, detailPath);
+        setPlayerDls(dls);
+        setPlayerDlLoading(false);
+    };
+    const handlePlayerEpChange = async (ep) => {
+        setPlayerEp(ep);
+        setIsPlaying(false); setStreamUrl(''); setActiveQIdx(-1);
+        setPlayerDlLoading(true);
+        const dls = await fetchLinks(subjectId, playerSe, ep, detailPath);
+        setPlayerDls(dls);
+        setPlayerDlLoading(false);
     };
 
-    const handleEpChange = (ep) => {
-        setCurrentEp(ep);
-        setIsPlaying(false);
-        setActiveStreamUrl('');
-        fetchDownloads(subjectId, currentSeason, ep, detailPath);
+    // ── Download: season/ep change ─────────────────────────────────
+    const handleDlSeasonChange = async (se) => {
+        setDlSe(se); setDlEp(1);
+        setDlLoading(true); setDlLinks([]);
+        const dls = await fetchLinks(subjectId, se, 1, detailPath);
+        setDlLinks(dls); setDlLoading(false);
+    };
+    const handleDlEpChange = async (ep) => {
+        setDlEp(ep);
+        setDlLoading(true); setDlLinks([]);
+        const dls = await fetchLinks(subjectId, dlSe, ep, detailPath);
+        setDlLinks(dls); setDlLoading(false);
     };
 
+    // ── Play a quality ─────────────────────────────────────────────
     const playQuality = (index, dlList) => {
-        const list = dlList || downloads;
+        const list = dlList || playerDls;
         const dl = list[index];
         if (!dl) return;
-        setActiveQualityIndex(index);
-        const url = `/api/stream-video?url=${encodeURIComponent(dl.url)}`;
-        setActiveStreamUrl(url);
+        setActiveQIdx(index);
+        setStreamUrl(`/api/stream-video?url=${encodeURIComponent(dl.url)}`);
         setIsPlaying(true);
         setTimeout(() => {
-            if (videoRef.current) {
-                videoRef.current.load();
-                videoRef.current.play().catch(() => {});
-            }
+            if (videoRef.current) { videoRef.current.load(); videoRef.current.play().catch(() => {}); }
         }, 100);
     };
 
-    if (loading) {
-        return (
-            <div className="page-loading">
-                <div className="spinner" style={{ width: '60px', height: '60px', borderWidth: '4px' }}></div>
-                <p>Loading...</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="page-loading">
-                <p style={{ color: '#ff4444', marginBottom: '1rem' }}>{error}</p>
-                <Link href="/" className="primary-btn">← Back to Home</Link>
-            </div>
-        );
-    }
-
+    // ── Render guards ──────────────────────────────────────────────
+    if (loading) return (
+        <div className="page-loading">
+            <div className="spinner" style={{ width: '60px', height: '60px', borderWidth: '4px' }}></div>
+            <p>Loading...</p>
+        </div>
+    );
+    if (error) return (
+        <div className="page-loading">
+            <p style={{ color: '#ff4444', marginBottom: '1rem' }}>{error}</p>
+            <Link href="/" className="primary-btn">← Back to Home</Link>
+        </div>
+    );
     if (!movie) return null;
 
     const backdropImg = movie.stills?.url || movie.cover?.url || '';
-    const coverUrl = movie.cover?.url || '';
-    const year = movie.releaseDate ? movie.releaseDate.split('-')[0] : '';
-    const rating = movie.imdbRatingValue;
-    const safeTitle = (movie.title || 'Video').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
-    const seasons = movie.resource?.seasons || [];
-    const currentSeasonData = seasons.find(s => s.se === currentSeason);
-    const totalEps = currentSeasonData?.maxEp || 1;
+    const coverUrl    = movie.cover?.url  || '';
+    const year        = movie.releaseDate ? movie.releaseDate.split('-')[0] : '';
+    const rating      = movie.imdbRatingValue;
+    const safeTitle   = (movie.title || 'Video').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
+
+    const playerSeasonData = seasons.find(s => s.se === playerSe);
+    const playerTotalEps   = playerSeasonData?.maxEp || 1;
+    const dlSeasonData     = seasons.find(s => s.se === dlSe);
+    const dlTotalEps       = dlSeasonData?.maxEp || 1;
+    const isSeries         = subjectType === 2;
 
     return (
         <>
-            {/* Backdrop */}
             {backdropImg && (
                 <div className="hero-backdrop" style={{ backgroundImage: `url('${backdropImg}')` }}>
                     <div className="backdrop-overlay"></div>
@@ -151,75 +213,76 @@ export default function WatchClient() {
 
             <div className="watch-main container">
 
-                {/* ── Player ── */}
+                {/* ═══════════════════════════════════════════════
+                    PLAYER
+                ═══════════════════════════════════════════════ */}
                 <section className="player-section">
+                    {/* Video */}
                     <div className="player-wrapper">
-                        <video
-                            ref={videoRef}
-                            id="videoPlayer"
-                            controls
-                            preload="metadata"
+                        <video ref={videoRef} id="videoPlayer" controls preload="metadata"
                             poster={!isPlaying ? coverUrl : undefined}
-                            src={activeStreamUrl || undefined}
+                            src={streamUrl || undefined}
                         />
                         {!isPlaying && (
                             <div className="player-overlay">
-                                <button
-                                    className="big-play-btn"
-                                    onClick={() => downloads.length > 0 && playQuality(0)}
-                                >▶</button>
+                                <button className="big-play-btn"
+                                    onClick={() => playerDls.length > 0 && playQuality(0)}>▶</button>
                                 <p className="player-msg">
-                                    {downloads.length > 0 ? 'Tap to watch' : 'No streams available'}
+                                    {playerDls.length > 0 ? 'Tap to watch' : 'No streams available'}
                                 </p>
                             </div>
                         )}
                     </div>
 
-                    {/* Quality Selector Row */}
+                    {/* Quality bar */}
                     <div className="quality-bar">
                         <span className="quality-bar-label">Quality:</span>
                         <div className="quality-btns">
-                            {downloads.length > 0
-                                ? downloads.map((dl, i) => (
-                                    <button
-                                        key={i}
-                                        className={`qual-btn${activeQualityIndex === i ? ' active' : ''}`}
-                                        onClick={() => playQuality(i)}
-                                    >
-                                        {dl.resolution || 'HD'}p
-                                    </button>
-                                ))
-                                : <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No streams available</span>
+                            {playerDlLoading
+                                ? <div className="spinner" style={{ width: '20px', height: '20px', margin: 0, borderWidth: '2px' }}></div>
+                                : playerDls.length > 0
+                                    ? playerDls.map((dl, i) => (
+                                        <button key={i}
+                                            className={`qual-btn ${getQualBtnClass(dl.resolution || 360)}${activeQIdx === i ? ' active' : ''}`}
+                                            onClick={() => playQuality(i)}>
+                                            {dl.resolution || 'HD'}p
+                                        </button>
+                                    ))
+                                    : <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No streams available</span>
                             }
                         </div>
                     </div>
 
-                    {/* ── Seasons & Episodes (Series only) ── */}
-                    {subjectType === 2 && seasons.length > 0 && (
+                    {/* Series season/episode selector for PLAYER */}
+                    {isSeries && (
                         <div className="seasons-ep-panel">
-                            {/* Season buttons */}
-                            <div className="sep-label">Season</div>
+                            <div className="sep-row">
+                                <span className="sep-label">Season</span>
+                                {seasonsLoading && (
+                                    <span className="sep-discovering">⟳ Discovering seasons...</span>
+                                )}
+                            </div>
                             <div className="sep-seasons">
-                                {seasons.map(s => (
-                                    <button
-                                        key={s.se}
-                                        className={`sep-btn${s.se === currentSeason ? ' active' : ''}`}
-                                        onClick={() => handleSeasonChange(s.se)}
-                                    >
-                                        S{s.se}
-                                    </button>
-                                ))}
+                                {seasons.length > 0
+                                    ? seasons.map(s => (
+                                        <button key={s.se}
+                                            className={`sep-btn${s.se === playerSe ? ' active' : ''}`}
+                                            onClick={() => handlePlayerSeasonChange(s.se)}>
+                                            S{s.se}
+                                        </button>
+                                    ))
+                                    : seasonsLoading
+                                        ? [1,2,3].map(n => <div key={n} className="sep-btn-skeleton"></div>)
+                                        : <button className="sep-btn active">S1</button>
+                                }
                             </div>
 
-                            {/* Episode buttons */}
-                            <div className="sep-label">Episode</div>
+                            <div className="sep-label" style={{ marginTop: '0.85rem' }}>Episode</div>
                             <div className="sep-episodes">
-                                {Array.from({ length: totalEps }, (_, i) => i + 1).map(ep => (
-                                    <button
-                                        key={ep}
-                                        className={`sep-ep-btn${ep === currentEp ? ' active' : ''}`}
-                                        onClick={() => handleEpChange(ep)}
-                                    >
+                                {Array.from({ length: seasons.length > 0 ? playerTotalEps : 24 }, (_, i) => i + 1).map(ep => (
+                                    <button key={ep}
+                                        className={`sep-ep-btn${ep === playerEp ? ' active' : ''}`}
+                                        onClick={() => handlePlayerEpChange(ep)}>
                                         {ep}
                                     </button>
                                 ))}
@@ -228,7 +291,9 @@ export default function WatchClient() {
                     )}
                 </section>
 
-                {/* ── Movie Info ── */}
+                {/* ═══════════════════════════════════════════════
+                    MOVIE / SERIES INFO
+                ═══════════════════════════════════════════════ */}
                 <section className="info-section">
                     <div className="info-left">
                         {coverUrl && <Image className="watch-poster" src={coverUrl} alt={movie.title} width={300} height={450} />}
@@ -239,38 +304,88 @@ export default function WatchClient() {
                         <div className="watch-meta">
                             {rating && <span className="meta-chip rating">★ {rating} IMDB</span>}
                             {year && <span className="meta-chip">📅 {year}</span>}
-                            <span className="meta-chip">{subjectType === 2 ? 'Series' : 'Movie'}</span>
-                            {movie.genre && <span className="meta-chip">🎬 {movie.genre}</span>}
+                            <span className="meta-chip">{isSeries ? '📺 Series' : '🎬 Movie'}</span>
+                            {isSeries && seasons.length > 0 && (
+                                <span className="meta-chip" style={{ background: 'rgba(229,9,20,0.15)', borderColor: 'rgba(229,9,20,0.35)', color: '#ff6b6b' }}>
+                                    {seasons.length} Season{seasons.length > 1 ? 's' : ''}
+                                </span>
+                            )}
+                            {isSeries && seasons.length > 0 && (
+                                <span className="meta-chip">
+                                    {seasons.reduce((acc, s) => acc + s.maxEp, 0)} Episodes
+                                </span>
+                            )}
+                            {movie.genre && <span className="meta-chip">🎭 {movie.genre}</span>}
                             {movie.countryName && <span className="meta-chip">🌍 {movie.countryName}</span>}
                         </div>
                         <p className="watch-desc">{movie.description || movie.desc || 'No synopsis available.'}</p>
 
-                        {/* Downloads */}
+                        {/* ═══════════════════════════════════════
+                            DOWNLOAD SECTION
+                        ═══════════════════════════════════════ */}
                         <div id="downloadSection" className="download-section">
                             <h3>⬇ Download</h3>
+
+                            {/* Series: season + episode picker for download */}
+                            {isSeries && (
+                                <div className="seasons-ep-panel" style={{ marginBottom: '1.25rem' }}>
+                                    <div className="sep-row">
+                                        <span className="sep-label">Season</span>
+                                        {seasonsLoading && <span className="sep-discovering">⟳ Discovering...</span>}
+                                    </div>
+                                    <div className="sep-seasons">
+                                        {seasons.length > 0
+                                            ? seasons.map(s => (
+                                                <button key={s.se}
+                                                    className={`sep-btn${s.se === dlSe ? ' active' : ''}`}
+                                                    onClick={() => handleDlSeasonChange(s.se)}>
+                                                    S{s.se}
+                                                </button>
+                                            ))
+                                            : seasonsLoading
+                                                ? [1,2,3].map(n => <div key={n} className="sep-btn-skeleton"></div>)
+                                                : <button className="sep-btn active">S1</button>
+                                        }
+                                    </div>
+
+                                    <div className="sep-label" style={{ marginTop: '0.85rem' }}>Episode</div>
+                                    <div className="sep-episodes">
+                                        {Array.from({ length: seasons.length > 0 ? dlTotalEps : 24 }, (_, i) => i + 1).map(ep => (
+                                            <button key={ep}
+                                                className={`sep-ep-btn${ep === dlEp ? ' active' : ''}`}
+                                                onClick={() => handleDlEpChange(ep)}>
+                                                {ep}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Download quality links */}
                             <div className="quality-grid">
-                                {downloads.length > 0
-                                    ? downloads.map((dl, i) => {
-                                        const sizeMB = (parseInt(dl.size || 0) / (1024 * 1024)).toFixed(1);
-                                        const res = dl.resolution || 'HD';
+                                {dlLoading && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-secondary)', padding: '1rem 0' }}>
+                                        <div className="spinner" style={{ width: '22px', height: '22px', margin: 0, borderWidth: '2px' }}></div>
+                                        <span>Loading download links...</span>
+                                    </div>
+                                )}
+                                {!dlLoading && dlLinks.length > 0
+                                    ? dlLinks.map((dl, i) => {
+                                        const sizeMB  = (parseInt(dl.size || 0) / (1024 * 1024)).toFixed(1);
+                                        const res     = dl.resolution || 'HD';
                                         const filename = `${safeTitle}_MetFlix_${res}p.mp4`;
                                         const proxyUrl = `/api/stream-download?url=${encodeURIComponent(dl.url)}&filename=${encodeURIComponent(filename)}`;
-                                        let badgeClass = 'badge-sd';
-                                        if (res >= 1080) badgeClass = 'badge-fhd';
-                                        else if (res >= 720) badgeClass = 'badge-hd';
                                         return (
                                             <a key={i} href={proxyUrl} download={filename} className="download-link">
                                                 <div className="dl-quality-row">
-                                                    <span className={`quality-badge ${badgeClass}`}>{res}p</span>
-                                                    <div className="download-quality">
-                                                        {res >= 1080 ? 'Full HD' : res >= 720 ? 'HD 720p' : res >= 480 ? 'SD 480p' : `Low ${res}p`}
-                                                    </div>
+                                                    <span className={`quality-badge ${getBadgeClass(res)}`}>{res}p</span>
+                                                    <div className="download-quality">{getQualityLabel(res)}</div>
                                                 </div>
                                                 <span className="download-size">{sizeMB} MB ↓</span>
                                             </a>
                                         );
                                     })
-                                    : <p className="text-secondary">No download links available.</p>
+                                    : !dlLoading && <p className="text-secondary" style={{ color: 'var(--text-secondary)' }}>No download links available.</p>
                                 }
                             </div>
                         </div>
@@ -284,14 +399,8 @@ export default function WatchClient() {
                         <div className="cast-grid">
                             {stars.slice(0, 10).map((s, i) => (
                                 <div className="cast-card" key={i}>
-                                    <Image
-                                        src={s.avatarUrl || 'https://placehold.co/80x80?text=?'}
-                                        className="cast-avatar"
-                                        alt={s.name}
-                                        width={80}
-                                        height={80}
-                                        unoptimized
-                                    />
+                                    <Image src={s.avatarUrl || 'https://placehold.co/80x80?text=?'}
+                                        className="cast-avatar" alt={s.name} width={80} height={80} unoptimized />
                                     <div className="cast-name">{s.name}</div>
                                     <div className="cast-role">{s.character || ''}</div>
                                 </div>
@@ -304,12 +413,12 @@ export default function WatchClient() {
                 {related.length > 0 && (
                     <section className="related-section">
                         <h2 className="section-title">
-                            {subjectType === 2 ? 'More Series Like This' : 'Movies You Might Like'}
+                            {isSeries ? 'More Series Like This' : 'Movies You Might Like'}
                         </h2>
                         <div className="movies-grid related-grid">
                             {related.map(m => {
                                 const cover = m.cover?.url || '';
-                                const y = m.releaseDate ? m.releaseDate.split('-')[0] : 'N/A';
+                                const y  = m.releaseDate ? m.releaseDate.split('-')[0] : 'N/A';
                                 const sT = m.subjectType || 1;
                                 const wUrl = `/watch?detailPath=${encodeURIComponent(m.detailPath)}&subjectId=${m.subjectId}&type=${sT}`;
                                 return (

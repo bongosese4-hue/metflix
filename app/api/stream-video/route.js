@@ -1,3 +1,4 @@
+// Route: /api/stream-video
 export const runtime = 'edge';
 
 const CDN_HEADERS = {
