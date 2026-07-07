@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { apiUrl } from './lib/capacitor-bridge';
 
 // Array shuffle helper
 const shuffleArray = (array) => {
@@ -74,7 +75,7 @@ export default function HomeClient() {
         setError(null);
         try {
             const promises = queries.map(queryObj => 
-                fetch(`/api/search?q=${encodeURIComponent(queryObj.q)}&type=${queryObj.type}&page=${targetPage}&per_page=30`, { signal }).then(r => r.json())
+                fetch(apiUrl(`/api/search?q=${encodeURIComponent(queryObj.q)}&type=${queryObj.type}&page=${targetPage}&per_page=30`), { signal }).then(r => r.json())
             );
             const results = await Promise.all(promises);
             let combined = [];

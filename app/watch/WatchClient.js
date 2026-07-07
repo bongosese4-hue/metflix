@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { apiUrl } from '../lib/capacitor-bridge';
 
 // ── Helpers ────────────────────────────────────────────────────────
 const getQualBtnClass = (res) => {
@@ -70,7 +71,7 @@ export default function WatchClient() {
     // ── Fetch downloads for a given se/ep ──────────────────────────
     const fetchLinks = useCallback(async (sid, se, ep, dPath) => {
         try {
-            const res  = await fetch(`/api/download?subjectId=${sid}&se=${se}&ep=${ep}&detailPath=${encodeURIComponent(dPath)}`);
+            const res  = await fetch(apiUrl(`/api/download?subjectId=${sid}&se=${se}&ep=${ep}&detailPath=${encodeURIComponent(dPath)}`));
             const data = await res.json();
             return (data.data && (data.data.downloads || data.data.list)) || [];
         } catch { return []; }
@@ -85,14 +86,14 @@ export default function WatchClient() {
                 return;
             }
             try {
-                const resDetail = await fetch(`/api/detail?detailPath=${encodeURIComponent(detailPath)}`);
+                const resDetail = await fetch(apiUrl(`/api/detail?detailPath=${encodeURIComponent(detailPath)}`));
                 const detailData = await resDetail.json();
                 const m = detailData.data?.subject || detailData.data;
                 if (!m) throw new Error('Movie data not found');
                 if (isMounted) { setMovie(m); setStars(detailData.data?.stars || []); }
 
                 if (m.genre) {
-                    fetch(`/api/related?genre=${encodeURIComponent(m.genre)}&exclude_id=${subjectId}`)
+                    fetch(apiUrl(`/api/related?genre=${encodeURIComponent(m.genre)}&exclude_id=${subjectId}`))
                         .then(r => r.json())
                         .then(d => { if (d.data?.items && isMounted) setRelated(d.data.items); });
                 }
@@ -114,7 +115,7 @@ export default function WatchClient() {
                 // For series: discover seasons/episodes in the background
                 if (subjectType === 2 && isMounted) {
                     setSeasonsLoading(true);
-                    fetch(`/api/seasons?subjectId=${subjectId}&detailPath=${encodeURIComponent(detailPath)}`)
+                    fetch(apiUrl(`/api/seasons?subjectId=${subjectId}&detailPath=${encodeURIComponent(detailPath)}`))
                         .then(r => r.json())
                         .then(d => {
                             if (isMounted && d.seasons?.length) {
