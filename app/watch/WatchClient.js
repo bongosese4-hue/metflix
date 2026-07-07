@@ -289,15 +289,20 @@ export default function WatchClient() {
                 <section className="player-section">
                     {/* Video */}
                     <div className="player-wrapper">
-                        <video ref={videoRef} id="videoPlayer" controls preload="metadata"
+                        <video ref={videoRef} id="videoPlayer" controls controlsList="nodownload noplaybackrate" preload="metadata"
                             poster={!isPlaying ? coverUrl : undefined}
                             src={streamUrl || undefined}
-                        />
+                            crossOrigin="anonymous"
+                        >
+                            {playerDls[activeQIdx]?.subtitles?.map((sub, idx) => (
+                                <track key={idx} kind="subtitles" src={sub.url} srcLang={sub.lang} label={sub.name || sub.lang || `Subtitle ${idx + 1}`} />
+                            ))}
+                        </video>
                         {isPlaying && (
-                            <div className="player-skip-controls">
-                                <button className="skip-btn skip-back" onClick={skipBackward}>↺ 10s</button>
-                                <button className="skip-btn skip-forward" onClick={skipForward}>10s ↻</button>
-                            </div>
+                            <>
+                                <div className="skip-zone skip-left" onDoubleClick={skipBackward}></div>
+                                <div className="skip-zone skip-right" onDoubleClick={skipForward}></div>
+                            </>
                         )}
                         {!isPlaying && (
                             <div className="player-overlay">
@@ -488,7 +493,7 @@ export default function WatchClient() {
                                 return (
                                     <Link href={relUrl} key={idx} className="movie-card" style={{ textDecoration: 'none' }}>
                                         <div className="poster-container">
-                                            <Image src={m.coverUrl || 'https://via.placeholder.com/300x450'} alt={m.title} width={300} height={450} className="movie-poster" unoptimized />
+                                            <Image src={m.cover?.url || 'https://via.placeholder.com/300x450'} alt={m.title} width={300} height={450} className="movie-poster" unoptimized />
                                         </div>
                                         <div className="movie-info">
                                             <h3 className="movie-title">{m.title}</h3>
