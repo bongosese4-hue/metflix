@@ -28,6 +28,9 @@ export default function Navbar() {
                     <Link href="/?q=anime" className="nav-link">Anime</Link>
                     <Link href="/watchlist" className="nav-link">Watchlist</Link>
                     <Link href="/history" className="nav-link">History</Link>
+                    <a href="/Metflix.apk" download className="primary-btn" style={{ marginLeft: '1rem', background: '#e50914', color: 'white', padding: '0.4rem 1rem', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold' }}>
+                        📱 Download App
+                    </a>
                 </nav>
             </div>
         </header>

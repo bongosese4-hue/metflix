@@ -10,7 +10,7 @@ const inter = Inter({
   weight: ['300', '400', '600', '700', '800'],
 });
 
-const BASE_URL = 'https://metflix.vercel.app'; // ← update to your final domain
+const BASE_URL = 'https://metflix.afrozex.com';
 
 export const metadata = {
   metadataBase: new URL(BASE_URL),

@@ -1,6 +1,6 @@
 export const dynamic = 'force-static';
 
-const BASE_URL = 'https://metflix.vercel.app'; // ← update to your final domain
+const BASE_URL = 'https://metflix.afrozex.com';
 
 export default function robots() {
   return {

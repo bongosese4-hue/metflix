@@ -2,7 +2,7 @@ export const dynamic = 'force-static';
 
 import { API_BASE, getHeaders } from './_api/config';
 
-const BASE_URL = 'https://metflix.vercel.app'; // ← update to your final domain
+const BASE_URL = 'https://metflix.afrozex.com';
 
 export default async function sitemap() {
   const now = new Date();
