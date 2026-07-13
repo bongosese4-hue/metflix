@@ -19,16 +19,16 @@ const shuffleArray = (array) => {
     return array;
 };
 
-export default function HomeClient() {
+export default function HomeClient({ initialMovies = [] }) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
     const [query, setQuery] = useState('');
-    const [movies, setMovies] = useState([]);
+    const [movies, setMovies] = useState(initialMovies);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
-    const [title, setTitle] = useState('Trending Now');
+    const [title, setTitle] = useState('2026 Latest Releases');
     const [bannerIndex, setBannerIndex] = useState(0);
     const [page, setPage] = useState(1);
     const abortControllerRef = useRef(null);
@@ -40,6 +40,8 @@ export default function HomeClient() {
         }, 5000);
         return () => clearInterval(interval);
     }, [movies]);
+
+    const isFirstRender = useRef(true);
 
     useEffect(() => {
         const qParam = searchParams.get('q');
@@ -55,9 +57,15 @@ export default function HomeClient() {
         } else if (qParam && qParam !== 'trending') {
             setTitle(`Search Results for "${qParam}"`);
             setQuery(qParam);
-            fetchMultiple([{q: qParam, type: 0}], 1, false); // Single search
+            fetchMultiple([{q: qParam, type: 0}], 1, false);
         } else {
             setTitle('2026 Latest Releases');
+            // Skip fetch on first render if initialMovies already provided by server
+            if (isFirstRender.current && initialMovies.length > 0) {
+                isFirstRender.current = false;
+                return;
+            }
+            isFirstRender.current = false;
             fetchMultiple([{q: '2026', type: 0}, {q: 'latest', type: 0}], 1, false);
         }
     }, [searchParams]);

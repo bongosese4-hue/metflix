@@ -68,6 +68,27 @@ export default function WatchClient() {
 
     const videoRef = useRef(null);
 
+    // ── Dynamic page title & meta for SEO ─────────────────────────
+    useEffect(() => {
+        if (!movie) return;
+        const year = movie.releaseDate ? movie.releaseDate.split('-')[0] : '';
+        const type = subjectType === 2 ? 'Series' : 'Movie';
+        const newTitle = `Watch ${movie.title}${year ? ` (${year})` : ''} Free HD ${type} | MetFlix`;
+        document.title = newTitle;
+
+        // Update meta description
+        let metaDesc = document.querySelector('meta[name="description"]');
+        if (!metaDesc) {
+            metaDesc = document.createElement('meta');
+            metaDesc.name = 'description';
+            document.head.appendChild(metaDesc);
+        }
+        const desc = movie.description
+            ? `${movie.description.slice(0, 140)}...`
+            : `Watch ${movie.title} online free in HD. Stream or download on MetFlix — no subscription needed.`;
+        metaDesc.setAttribute('content', desc);
+    }, [movie, subjectType]);
+
     // ── Fetch downloads for a given se/ep ──────────────────────────
     const fetchLinks = useCallback(async (sid, se, ep, dPath) => {
         try {
