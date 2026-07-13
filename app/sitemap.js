@@ -55,7 +55,7 @@ export default async function sitemap() {
     const items = data.data?.items || [];
 
     const dynamicRoutes = items.map((item) => ({
-      url: `${BASE_URL}/watch?detailPath=${encodeURIComponent(item.detailPath)}&subjectId=${item.subjectId}&type=${item.subjectType || 1}`,
+      url: `${BASE_URL}/watch?detailPath=${encodeURIComponent(item.detailPath)}&amp;subjectId=${item.subjectId}&amp;type=${item.subjectType || 1}`,
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.7,
